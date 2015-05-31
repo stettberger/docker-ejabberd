@@ -1,5 +1,5 @@
-FROM debian:7
-MAINTAINER Rafael Römhild <rafael@roemhild.de>
+FROM phusion/baseimage
+MAINTAINER Christian Dietrich <stettberger@dokucode.de>
 
 ENV EJABBERD_BRANCH 15.04
 ENV EJABBERD_USER ejabberd
@@ -10,7 +10,9 @@ ENV EJABBERD_HOME /opt/ejabberd
 ENV HOME $EJABBERD_HOME
 ENV PATH $EJABBERD_HOME/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV DEBIAN_FRONTEND noninteractive
-ENV XMPP_DOMAIN localhost
+ENV XMPP_DOMAIN jabber.zerties.org
+ENV ERLANG_NODE ejabberd
+env TZ Europe/Berlin
 
 # Add ejabberd user and group
 RUN groupadd -r $EJABBERD_USER \
@@ -38,23 +40,10 @@ RUN apt-get update \
         libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install program to configure locales
-RUN dpkg-reconfigure locales && \
-  locale-gen C.UTF-8 && \
-  /usr/sbin/update-locale LANG=C.UTF-8
-
-# Install needed default locale for Makefly
-RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && \
-  locale-gen
-
-# Set default locale for the environment
-ENV LC_ALL C.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US.UTF-8
+ADD ./erlang_solutions.asc /tmp/erlang_solutions.asc
 
 # Install erlang
-RUN echo 'deb http://packages.erlang-solutions.com/debian wheezy contrib' >> /etc/apt/sources.list \
-    && curl --silent --output /tmp/erlang_solutions.asc -L "http://packages.erlang-solutions.com/debian/erlang_solutions.asc" \
+RUN echo 'deb https://packages.erlang-solutions.com/debian wheezy contrib' >> /etc/apt/sources.list \
     && apt-key add /tmp/erlang_solutions.asc \
     && apt-get update \
     && apt-get -y --no-install-recommends install erlang-base \
@@ -88,24 +77,18 @@ RUN cd /tmp \
     && ln -sf $EJABBERD_HOME/conf /etc/ejabberd \
     && chown -R $EJABBERD_USER: $EJABBERD_HOME
 
-# Wrapper for setting config on disk from environment
-# allows setting things like XMPP domain at runtime
-ADD ./run.sh /sbin/run
+# Clean up APT when done.
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add run scripts
 ADD ./scripts $EJABBERD_HOME/scripts
 
+# The service file (which switches to ejabberd user), and the actual daemon starting script
+ADD ./ejabberd-service.sh /etc/service/ejabberd/run
+ADD ./run.sh ${EJABBERD_HOME}/run.sh
+
 # Add config templates
 ADD ./conf /opt/ejabberd/conf
 
-# Continue as user
-USER $EJABBERD_USER
-
-# Set workdir to ejabberd root
-WORKDIR $EJABBERD_HOME
-
 VOLUME ["$EJABBERD_HOME/database", "$EJABBERD_HOME/ssl"]
 EXPOSE 4560 5222 5269 5280
-
-CMD ["start"]
-ENTRYPOINT ["run"]

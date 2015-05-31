@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo ${EJABBERD_HOME}/${ERLANG_NODE}
+mkdir ${EJABBERD_HOME}/${ERLANG_NODE}
+chown ${EJABBERD_USER} ${EJABBERD_HOME}/${ERLANG_NODE}
