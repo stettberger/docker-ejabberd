@@ -77,9 +77,6 @@ RUN cd /tmp \
     && ln -sf $EJABBERD_HOME/conf /etc/ejabberd \
     && chown -R $EJABBERD_USER: $EJABBERD_HOME
 
-# Clean up APT when done.
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
 # Add run scripts
 ADD ./scripts $EJABBERD_HOME/scripts
 
