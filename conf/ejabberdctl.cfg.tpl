@@ -184,4 +184,4 @@ EJABBERD_BYPASS_WARNINGS=true
 #
 # Docker: rroemhild/ejabberd
 #
-SPOOL_DIR=$EJABBERD_HOME/database/$ERLANG_NODE
+SPOOL_DIR={{ env["EJABBERD_HOME"] }}/database/{{ env['ERLANG_NODE'] or "ejabberd@localhost" }}

@@ -27,6 +27,7 @@ ctl() {
 
 _trap() {
     echo "Stopping ejabberd..."
+    ejabberdctl backup ${EJABBERD_HOME}/database/${ERLANG_NODE}.mnesia-backup
     if ctl stop ; then
         local cnt=0
         sleep 1

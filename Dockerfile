@@ -11,7 +11,7 @@ ENV HOME $EJABBERD_HOME
 ENV PATH $EJABBERD_HOME/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV DEBIAN_FRONTEND noninteractive
 ENV XMPP_DOMAIN jabber.zerties.org
-ENV ERLANG_NODE ejabberd
+ENV ERLANG_NODE ejabberd@localhost
 env TZ Europe/Berlin
 
 # Add ejabberd user and group
@@ -19,12 +19,16 @@ RUN groupadd -r $EJABBERD_USER \
     && useradd -r -m \
        -g $EJABBERD_USER \
        -d $EJABBERD_HOME \
-       -s /usr/sbin/nologin \
+       -s /bin/bash \
        $EJABBERD_USER
 
-# Install base requirements
-RUN apt-get update \
-    && apt-get -y --no-install-recommends install \
+ADD ./erlang_solutions.asc /tmp/erlang_solutions.asc
+
+# Install erlang
+RUN echo 'deb https://packages.erlang-solutions.com/debian wheezy contrib' >> /etc/apt/sources.list \
+    && apt-key add /tmp/erlang_solutions.asc \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends  -yq install \
         locales \
         curl \
         git-core \
@@ -38,25 +42,16 @@ RUN apt-get update \
         python-jinja2 \
         ca-certificates \
         libsqlite3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-ADD ./erlang_solutions.asc /tmp/erlang_solutions.asc
-
-# Install erlang
-RUN echo 'deb https://packages.erlang-solutions.com/debian wheezy contrib' >> /etc/apt/sources.list \
-    && apt-key add /tmp/erlang_solutions.asc \
-    && apt-get update \
-    && apt-get -y --no-install-recommends install erlang-base \
+        erlang-base \
         erlang-snmp erlang-ssl erlang-ssh erlang-webtool erlang-tools \
         erlang-xmerl erlang-corba erlang-diameter erlang-eldap \
         erlang-eunit erlang-ic erlang-inviso erlang-odbc erlang-os-mon \
         erlang-parsetools erlang-percept erlang-typer erlang-src \
         erlang-dev \
     && rm /tmp/erlang_solutions.asc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install ejabberd from source
-RUN cd /tmp \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && cd /tmp \
     && git clone https://github.com/processone/ejabberd.git \
         --branch $EJABBERD_BRANCH --single-branch --depth=1 \
     && cd ejabberd \
@@ -87,5 +82,5 @@ ADD ./run.sh ${EJABBERD_HOME}/run.sh
 # Add config templates
 ADD ./conf /opt/ejabberd/conf
 
-VOLUME ["$EJABBERD_HOME/database", "$EJABBERD_HOME/ssl"]
+VOLUME ["/opt/ejabberd/database", "$EJABBERD_HOME/ssl"]
 EXPOSE 4560 5222 5269 5280
